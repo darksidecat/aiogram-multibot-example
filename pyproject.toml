@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "aiogram-multibot-example"
+version = "0.1.0"
+description = ""
+authors = ["darksidecat <58224121+darksidecat@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+aiogram = { git="https://github.com/aiogram/aiogram.git",  branch="dev-3.x" }
+black = "^21.9b0"
+
+[tool.poetry.dev-dependencies]
+black = "^21.9b0"
+isort = "^5.9.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
