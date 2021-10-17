@@ -38,26 +38,30 @@ async def on_shutdown(bots: List[Bot]):
         await bot.send_message(chat_id=ADMIN_ID, text="Bot shutdown!")
 
 
+async def run_bot(bot: Bot, dp: Dispatcher, message: types.Message):
+    workflow_data = {"dispatcher": dp, "bots": [bot], "bot": bot}
+    try:
+        user: User = await bot.me()
+        loggers.dispatcher.info(
+            "Run polling for bot @%s id=%d - %r",
+            user.username,
+            bot.id,
+            user.full_name,
+        )
+        await dp.emit_startup(**workflow_data)
+        await message.answer(f"New bot started: @{user.username}")
+        await dp._polling(bot=bot)
+    finally:
+        await dp.emit_shutdown(**workflow_data)
+        await bot.session.close()
+        loggers.dispatcher.info("Polling stopped")
+
+
 async def add_bot(message: types.Message, command: CommandObject, dp: Dispatcher):
     if command.args:
         try:
             bot = Bot(command.args)
-            workflow_data = {"dispatcher": dp, "bots": [bot], "bot": bot}
-            try:
-                user: User = await bot.me()
-                loggers.dispatcher.info(
-                    "Run polling for bot @%s id=%d - %r",
-                    user.username,
-                    bot.id,
-                    user.full_name,
-                )
-                await dp.emit_startup(**workflow_data)
-                await message.answer(f"New bot started: @{user.username}")
-                await dp._polling(bot=bot)
-            finally:
-                await dp.emit_shutdown(**workflow_data)
-                await bot.session.close()
-                loggers.dispatcher.info("Polling stopped")
+            asyncio.create_task(run_bot(bot, dp, message))
         except TokenValidationError as err:
             await message.answer(f"{str(err)}")
     else:
@@ -90,5 +94,5 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except(KeyboardInterrupt, SystemExit):
+    except (KeyboardInterrupt, SystemExit):
         logger.error("Exit")
