@@ -7,6 +7,8 @@ from aiogram.dispatcher.filters.command import Command, CommandObject
 from aiogram.types import BotCommand, BotCommandScopeDefault, User
 from aiogram.utils.token import TokenValidationError
 
+logger = logging.getLogger(__name__)
+
 TOKENS = [
     "TOKEN1",
     "TOKEN2",
@@ -86,4 +88,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except(KeyboardInterrupt, SystemExit):
+        logger.error("Exit")
