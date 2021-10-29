@@ -68,7 +68,6 @@ async def add_bot(
                 await message.answer("Bot with this id already running")
                 return
 
-            await on_bot_startup(bot)
             await polling_manager.start_bot_polling(
                 dp=dp,
                 bot=bot,
