@@ -57,7 +57,7 @@ async def on_shutdown(bots: List[Bot]):
 async def add_bot(
     message: types.Message,
     command: CommandObject,
-    dp: Dispatcher,
+    dp_for_new_bot: Dispatcher,
     polling_manager: PollingManager,
 ):
     if command.args:
@@ -68,11 +68,14 @@ async def add_bot(
                 await message.answer("Bot with this id already running")
                 return
 
+            # also propagate dp and polling manager to new bot to allow new bot add bots
             await polling_manager.start_bot_polling(
-                dp=dp,
+                dp=dp_for_new_bot,
                 bot=bot,
                 on_bot_startup=on_bot_startup(bot),
                 on_bot_shutdown=on_bot_shutdown(bot),
+                polling_manager=polling_manager,
+                dp_for_new_bot=dp_for_new_bot
             )
             bot_user = await bot.get_me()
             await message.answer(f"New bot started: @{bot_user.username}")
@@ -118,7 +121,7 @@ async def main():
 
     for bot in bots:
         await bot.get_updates(offset=-1)
-    await dp.start_polling(*bots, dp=dp, polling_manager=polling_manager)
+    await dp.start_polling(*bots, dp_for_new_bot=dp, polling_manager=polling_manager)
 
 
 if __name__ == "__main__":
