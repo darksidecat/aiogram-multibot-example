@@ -2,10 +2,14 @@ import asyncio
 import logging
 from typing import List
 
-from aiogram import Bot, Dispatcher, loggers, types
+from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher.filters.command import Command, CommandObject
-from aiogram.types import BotCommand, BotCommandScopeDefault, User
+from aiogram.exceptions import TelegramUnauthorizedError
+from aiogram.types import BotCommand, BotCommandScopeDefault
+from aiogram.utils.markdown import html_decoration as fmt
 from aiogram.utils.token import TokenValidationError
+
+from polling_manager import PollingManager
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +17,7 @@ TOKENS = [
     "TOKEN1",
     "TOKEN2",
 ]
-ADMIN_ID = 123456789
+ADMIN_ID = 1234567890
 
 
 async def set_commands(bot: Bot):
@@ -22,50 +26,74 @@ async def set_commands(bot: Bot):
             command="add_bot",
             description="add bot, usage '/add_bot 123456789:qwertyuiopasdfgh'",
         ),
+        BotCommand(
+            command="stop_bot",
+            description="stop bot, usage '/stop_bot 123456789'",
+        ),
     ]
 
     await bot.set_my_commands(commands=commands, scope=BotCommandScopeDefault())
 
 
+async def on_bot_startup(bot: Bot):
+    await set_commands(bot)
+    await bot.send_message(chat_id=ADMIN_ID, text="Bot started!")
+
+
+async def on_bot_shutdown(bot: Bot):
+    await bot.send_message(chat_id=ADMIN_ID, text="Bot shutdown!")
+
+
 async def on_startup(bots: List[Bot]):
     for bot in bots:
-        await set_commands(bot)
-        await bot.send_message(chat_id=ADMIN_ID, text="Bot started!")
+        await on_bot_startup(bot)
 
 
 async def on_shutdown(bots: List[Bot]):
     for bot in bots:
-        await bot.send_message(chat_id=ADMIN_ID, text="Bot shutdown!")
+        await on_bot_shutdown(bot)
 
 
-async def run_bot(bot: Bot, dp: Dispatcher, message: types.Message):
-    workflow_data = {"dispatcher": dp, "bots": [bot], "bot": bot}
-    try:
-        user: User = await bot.me()
-        loggers.dispatcher.info(
-            "Run polling for bot @%s id=%d - %r",
-            user.username,
-            bot.id,
-            user.full_name,
-        )
-        await dp.emit_startup(**workflow_data)
-        await message.answer(f"New bot started: @{user.username}")
-        await dp._polling(bot=bot)
-    finally:
-        await dp.emit_shutdown(**workflow_data)
-        await bot.session.close()
-        loggers.dispatcher.info("Polling stopped")
-
-
-async def add_bot(message: types.Message, command: CommandObject, dp: Dispatcher):
+async def add_bot(
+    message: types.Message,
+    command: CommandObject,
+    dp: Dispatcher,
+    polling_manager: PollingManager,
+):
     if command.args:
         try:
             bot = Bot(command.args)
-            asyncio.create_task(run_bot(bot, dp, message))
-        except TokenValidationError as err:
-            await message.answer(f"{str(err)}")
+
+            if bot.id in polling_manager.polling_tasks:
+                await message.answer("Bot with this id already running")
+                return
+
+            await on_bot_startup(bot)
+            await polling_manager.start_bot_polling(
+                dp=dp,
+                bot=bot,
+                on_bot_startup=on_bot_startup(bot),
+                on_bot_shutdown=on_bot_shutdown(bot),
+            )
+            bot_user = await bot.get_me()
+            await message.answer(f"New bot started: @{bot_user.username}")
+        except (TokenValidationError, TelegramUnauthorizedError) as err:
+            await message.answer(fmt.quote(f"{type(err).__name__}: {str(err)}"))
     else:
         await message.answer("Please provide token")
+
+
+async def stop_bot(
+    message: types.Message, command: CommandObject, polling_manager: PollingManager
+):
+    if command.args:
+        try:
+            polling_manager.stop_bot_polling(int(command.args))
+            await message.answer("Bot stopped")
+        except (ValueError, KeyError) as err:
+            await message.answer(fmt.quote(f"{type(err).__name__}: {str(err)}"))
+    else:
+        await message.answer("Please provide bot id")
 
 
 async def echo(message: types.Message):
@@ -84,11 +112,14 @@ async def main():
     dp.shutdown.register(on_shutdown)
 
     dp.message.register(add_bot, Command(commands="add_bot"))
+    dp.message.register(stop_bot, Command(commands="stop_bot"))
     dp.message.register(echo)
+
+    polling_manager = PollingManager()
 
     for bot in bots:
         await bot.get_updates(offset=-1)
-    await dp.start_polling(*bots, dp=dp)
+    await dp.start_polling(*bots, dp=dp, polling_manager=polling_manager)
 
 
 if __name__ == "__main__":
