@@ -6,8 +6,7 @@ authors = ["darksidecat <58224121+darksidecat@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-aiogram = { git="https://github.com/aiogram/aiogram.git",  branch="dev-3.x" }
-black = "^21.9b0"
+aiogram = {version = "3.0.0b1", allow-prereleases = true}
 
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
