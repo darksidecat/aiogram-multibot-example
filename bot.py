@@ -69,13 +69,13 @@ async def add_bot(
                 return
 
             # also propagate dp and polling manager to new bot to allow new bot add bots
-            await polling_manager.start_bot_polling(
+            polling_manager.start_bot_polling(
                 dp=dp_for_new_bot,
                 bot=bot,
                 on_bot_startup=on_bot_startup(bot),
                 on_bot_shutdown=on_bot_shutdown(bot),
                 polling_manager=polling_manager,
-                dp_for_new_bot=dp_for_new_bot
+                dp_for_new_bot=dp_for_new_bot,
             )
             bot_user = await bot.get_me()
             await message.answer(f"New bot started: @{bot_user.username}")

@@ -16,17 +16,17 @@ class PollingManager:
     def __init__(self):
         self.polling_tasks: Dict[int, Task] = {}
 
-    async def start_bot_polling(
+    def _create_pooling_task(
         self,
         dp: Dispatcher,
         bot: Bot,
-        polling_timeout: int = 10,
-        handle_as_tasks: bool = True,
-        backoff_config: BackoffConfig = DEFAULT_BACKOFF_CONFIG,
-        allowed_updates: Optional[List[str]] = None,
+        polling_timeout: int,
+        handle_as_tasks: bool,
+        backoff_config: BackoffConfig,
+        allowed_updates: Optional[List[str]],
         **kwargs: Any,
     ):
-        callback = lambda: asyncio.create_task(
+        asyncio.create_task(
             self._start_bot_polling(
                 dp=dp,
                 bot=bot,
@@ -37,9 +37,31 @@ class PollingManager:
                 **kwargs,
             )
         )
+
+    def start_bot_polling(
+        self,
+        dp: Dispatcher,
+        bot: Bot,
+        polling_timeout: int = 10,
+        handle_as_tasks: bool = True,
+        backoff_config: BackoffConfig = DEFAULT_BACKOFF_CONFIG,
+        allowed_updates: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
         loop: AbstractEventLoop = get_running_loop()
         # noinspection PyArgumentList
-        loop.call_soon(callback, context=Context())
+        loop.call_soon(
+            self._create_pooling_task(
+                dp=dp,
+                bot=bot,
+                polling_timeout=polling_timeout,
+                handle_as_tasks=handle_as_tasks,
+                backoff_config=backoff_config,
+                allowed_updates=allowed_updates,
+                **kwargs,
+            ),
+            context=Context(),
+        )
 
     async def _start_bot_polling(
         self,
