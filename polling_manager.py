@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import logging
 from asyncio import AbstractEventLoop, CancelledError, Task, get_running_loop
 from contextvars import Context
@@ -51,7 +52,8 @@ class PollingManager:
         loop: AbstractEventLoop = get_running_loop()
         # noinspection PyArgumentList
         loop.call_soon(
-            self._create_pooling_task(
+            functools.partial(
+                self._create_pooling_task,
                 dp=dp,
                 bot=bot,
                 polling_timeout=polling_timeout,

@@ -4,6 +4,7 @@ from typing import List
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher.filters.command import Command, CommandObject
+from aiogram.dispatcher.fsm.storage.memory import SimpleEventIsolation
 from aiogram.exceptions import TelegramUnauthorizedError
 from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiogram.utils.markdown import html_decoration as fmt
@@ -108,7 +109,7 @@ async def main():
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     )
     bots = [Bot(token) for token in TOKENS]
-    dp = Dispatcher(isolate_events=True)
+    dp = Dispatcher(events_isolation=SimpleEventIsolation())
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
